@@ -21,6 +21,22 @@ impl SubgrainSystem {
             }
         }
     }    
+
+    pub fn initialize_auto(entities: &mut [Entity], r0:f64){
+        for entity in entities.iter_mut(){
+            let radius = entity.get_component::<Radius>().unwrap().value;
+            let s_grain = 0.2*PI*radius.powf(2.0)*0.8;
+            let s_subgr = PI*r0.powf(2.0);
+            let num_sg = (s_grain/s_subgr) as i32;
+            println!("{}",num_sg);
+            if let Some(subgr) = entity.get_component_mut::<Subgrains>(){
+                for i in 0..num_sg{
+                    subgr.vector.push(entity!(i as usize, Radius, Volume, DriveForce));
+                }
+                GeometrySystem::initialize_rey(&mut subgr.vector, r0);
+            }
+        }
+    }
 }
 
 pub struct RecrystallizationSystem;
@@ -123,29 +139,29 @@ impl RecrystallizationSystem{
             }
         }
 
-        let mut victim_entity: Option<&mut Entity>=None;
-        let mut max_est = 0.0;
+        let victim = &mut entities[0];
+        /*let mut max_est = 0.0;
         for entity in entities.iter_mut(){
             if entity.get_component::<AccumEnergy>().unwrap().value > max_est{
                 max_est = entity.get_component::<AccumEnergy>().unwrap().value;
                 victim_entity = Some(entity);
             }
-        }
+        }*/
 
-        if let Some(victim) = victim_entity{
-            let mut new_value = 0.0;
-            if let Some(vict_volume) = victim.get_component_mut::<Volume>(){
-                new_value = vict_volume.value - dv;
-                if new_value>=0.0{
-                    vict_volume.value = new_value;
-                } else {
-                    vict_volume.value = 0.0;
-                }
+        //if let Some(victim) = victim_entity{
+        let mut new_value = 0.0;
+        if let Some(vict_volume) = victim.get_component_mut::<Volume>(){
+            new_value = vict_volume.value - dv;
+            if new_value>=0.0{
+                vict_volume.value = new_value;
+            } else {
+                vict_volume.value = 0.0;
             }
-            if let Some(vict_radius) = victim.get_component_mut::<Radius>(){
-                vict_radius.value =  (3.0 / 4.0 / PI * new_value).powf(1.0/3.0);    
-            }        
         }
+        if let Some(vict_radius) = victim.get_component_mut::<Radius>(){
+            vict_radius.value =  (3.0 / 4.0 / PI * new_value).powf(1.0/3.0);    
+        }        
+       // }
                
     }
 
@@ -159,7 +175,7 @@ impl RecrystallizationSystem{
         for entity in entities.iter_mut(){
             let mut new_subgr:Vec<f64> = Vec::new();
            
-            if let Some(subgrains) = entity.get_component::<Subgrains>(){
+            if let Some(subgrains) = entity.get_component_mut::<Subgrains>(){
                 let subgr = &subgrains.vector;
                 for sg in subgr.iter(){
                     
@@ -168,6 +184,7 @@ impl RecrystallizationSystem{
                         new_subgr.push(sg.get_component::<Radius>().unwrap().value);
                     }
                 }
+                subgrains.vector.retain(|entity| entity.get_component::<DriveForce>().unwrap().value <= 0.0);
             }
             
             for subgr in new_subgr{
@@ -182,7 +199,7 @@ impl RecrystallizationSystem{
                     entity_volume.value -= subgr_volume;
 
                     let entity_radius = entity.get_component_mut::<Radius>().unwrap();
-                    entity_radius.value = (3.0/4.0 / PI * entity_volume_old - subgr_volume).powf(1.0/3.0); 
+                    entity_radius.value = (3.0/4.0 / PI * (entity_volume_old - subgr_volume)).powf(1.0/3.0); 
 
                     let mut new_entity = entity!(1000, Radius, Volume, 
                     Rotation, TensorL, TensorD, TensorDe, TensorDin, TensorEps, 
@@ -190,6 +207,7 @@ impl RecrystallizationSystem{
                     BurgersVectors, BNMatrix, NormalsVectors, 
                     TauC, TauCRate, TauCHP, Tau, GammaRate, HVector, HMatrix,
                     DriveForce, AccumEnergyRate, AccumEnergy, FacetMobility, VelocityFacet);
+
                     let new_antity_rad = new_entity.get_component_mut::<Radius>().unwrap();
                     new_antity_rad.value = subgr;
                     let new_antity_vol = new_entity.get_component_mut::<Volume>().unwrap();
@@ -205,7 +223,7 @@ impl RecrystallizationSystem{
         StressSystem::initialize(&mut new_grains, params.get_f64("c11"), params.get_f64("c12"), params.get_f64("c44"), params.get_f64("koef"));
         SlideSystem::initialize(&mut new_grains);
         DislocationSlidingSystem::initialize(&mut new_grains, params.get_f64("tau_c"));
-        SubgrainSystem::initialize(&mut new_grains, params.get_i64("num_sg"), params.get_f64("r0"));
+        //SubgrainSystem::initialize(&mut new_grains, params.get_i64("num_sg"), params.get_f64("r0"));
         RecrystallizationSystem::initialize_facet_mobility(&mut new_grains, params.get_f64("m0"), params.get_f64("Q"), params.get_f64("r"), params.get_f64("temp"));
 
         entities.extend(new_grains);

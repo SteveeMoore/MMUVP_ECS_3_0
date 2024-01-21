@@ -6,3 +6,4 @@ pub mod geometry;
 pub mod slide_systems;
 pub mod writer;
 pub mod recrystallization;
+pub mod control;

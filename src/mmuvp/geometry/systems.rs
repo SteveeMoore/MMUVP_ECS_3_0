@@ -13,20 +13,35 @@ pub struct GeometrySystem;
 
 impl GeometrySystem {
     pub fn initialize_log(entities: &mut [Entity], mean: f64, std_dev: f64){
-        for entity in entities.iter_mut(){
-            if let Some(radius) = entity.get_component_mut::<Radius>(){
-                let value = generate_lognormal_random_number(mean, std_dev);
-                radius.value = value;
+        if entities.len() >1 {
+            for entity in entities.iter_mut(){
+                if let Some(radius) = entity.get_component_mut::<Radius>(){
+                    let value = generate_lognormal_random_number(mean, std_dev);
+                    radius.value = value;
+                }
+    
+                let r = entity.get_component::<Radius>().unwrap().value;
+                if let Some(volume) = entity.get_component_mut::<Volume>(){
+                    let value = 4.0/3.0 * PI * r.powf(3.0);
+                    volume.value = value;
+                }
             }
-
-            let r = entity.get_component::<Radius>().unwrap().value;
-            if let Some(volume) = entity.get_component_mut::<Volume>(){
-                let value = 4.0/3.0 * PI * r.powf(3.0);
-                volume.value = value;
+        } else {
+            for entity in entities.iter_mut(){
+                if let Some(radius) = entity.get_component_mut::<Radius>(){
+                    let value = mean;
+                    radius.value = value;
+                }
+    
+                let r = entity.get_component::<Radius>().unwrap().value;
+                if let Some(volume) = entity.get_component_mut::<Volume>(){
+                    let value = 4.0/3.0 * PI * r.powf(3.0);
+                    volume.value = value;
+                }
             }
         }
     }
-
+    
     pub fn initialize_rey(entities: &mut [Entity], mean: f64){
         let mut buff_vec:Vec<f64> = vec![];
 
